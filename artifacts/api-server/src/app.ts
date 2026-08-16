@@ -10,14 +10,14 @@ app.use(
   pinoHttp({
     logger,
     serializers: {
-      req(req) {
+      req(req: any) {
         return {
           id: req.id,
           method: req.method,
           url: req.url?.split("?")[0],
         };
       },
-      res(res) {
+      res(res: any) {
         return {
           statusCode: res.statusCode,
         };
@@ -28,7 +28,7 @@ app.use(
 app.use(cors());
 // Skip JSON/urlencoded parsing for the raw local-upload endpoint so the
 // route-level express.raw() receives the untouched file body.
-app.use((req, res, next) => {
+app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
   if (req.path.startsWith("/api/storage/local-upload/")) {
     next();
     return;
