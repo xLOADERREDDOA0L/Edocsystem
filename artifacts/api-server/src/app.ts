@@ -1,15 +1,17 @@
-import express, {
-  type Express,
-  type Request,
-  type Response,
-  type NextFunction,
-} from "express";
+import express, { type Express } from "express";
 import cors from "cors";
-import pinoHttp from "pino-http";
+import * as pinoHttpModule from "pino-http";
 import router from "./routes";
 import { logger } from "./lib/logger";
 
 const app: Express = express();
+
+// pino-http v10 is exposed as a CommonJS-style module.
+// Resolve the callable export explicitly for TypeScript/ESM.
+const pinoHttp =
+  "default" in pinoHttpModule
+    ? pinoHttpModule.default
+    : pinoHttpModule;
 
 app.use(
   pinoHttp({
@@ -35,16 +37,14 @@ app.use(cors());
 
 // Skip JSON parsing for the raw local-upload endpoint
 // so express.raw() receives the untouched file body.
-app.use(
-  (req: Request, res: Response, next: NextFunction) => {
-    if (req.path.startsWith("/api/storage/local-upload/")) {
-      next();
-      return;
-    }
+app.use((req, res, next) => {
+  if (req.path.startsWith("/api/storage/local-upload/")) {
+    next();
+    return;
+  }
 
-    express.json()(req, res, next);
-  },
-);
+  express.json()(req, res, next);
+});
 
 app.use(express.urlencoded({ extended: true }));
 
