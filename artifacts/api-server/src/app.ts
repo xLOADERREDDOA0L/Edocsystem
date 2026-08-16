@@ -1,4 +1,9 @@
-import express, { type Express } from "express";
+import express, {
+  type Express,
+  type Request,
+  type Response,
+  type NextFunction,
+} from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
 import router from "./routes";
@@ -25,16 +30,22 @@ app.use(
     },
   }),
 );
+
 app.use(cors());
-// Skip JSON/urlencoded parsing for the raw local-upload endpoint so the
-// route-level express.raw() receives the untouched file body.
-app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
-  if (req.path.startsWith("/api/storage/local-upload/")) {
-    next();
-    return;
-  }
-  express.json()(req, res, next);
-});
+
+// Skip JSON parsing for the raw local-upload endpoint
+// so express.raw() receives the untouched file body.
+app.use(
+  (req: Request, res: Response, next: NextFunction) => {
+    if (req.path.startsWith("/api/storage/local-upload/")) {
+      next();
+      return;
+    }
+
+    express.json()(req, res, next);
+  },
+);
+
 app.use(express.urlencoded({ extended: true }));
 
 app.use("/api", router);
