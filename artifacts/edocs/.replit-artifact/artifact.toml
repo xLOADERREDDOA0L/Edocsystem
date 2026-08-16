@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Engineering Document Control System"
+description = "A smart engineering document control and distribution management system for manufacturing companies. Manages engineering documents through a full lifecycle: upload, review, approval, revision control, controlled printing with QR codes, QR verification, and comprehensive audit trails. Supports role-based access (Administrator, Document Controller, Engineer, Supervisor, Employee, Inspector) with standard username/password authentication."
+version = "1.0.0"
+id = "artifacts/edocs"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 18508
+
+[services.development]
+run = "pnpm --filter @workspace/edocs run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/edocs", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/edocs/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "18508"
+BASE_PATH = "/"
