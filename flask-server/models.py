@@ -142,3 +142,11 @@ class AuditLog(db.Model):
     ip_address = db.Column(db.Text)
     user_agent = db.Column(db.Text)
     created_at = db.Column(db.DateTime(timezone=True), default=utcnow)
+
+
+class EmailSetting(db.Model):
+    __tablename__ = "email_settings"
+    id = db.Column(db.Integer, primary_key=True)
+    key = db.Column(db.Text, unique=True, nullable=False)
+    value = db.Column(db.Text)
+    updated_at = db.Column(db.DateTime(timezone=True), default=utcnow, onupdate=utcnow)

@@ -1,6 +1,7 @@
 import bcrypt
 from flask import Blueprint, g, jsonify, request
 
+from email_notifications import send_registration_email
 from helpers import iso, log_audit, make_token, require_auth, user_profile
 from models import User, db, utcnow
 
@@ -30,6 +31,7 @@ def register():
     )
     db.session.add(user)
     db.session.commit()
+    send_registration_email(user)
     log_audit(None, "REGISTER", "auth",
               f"Self-registration request from {user.employee_id}", "user", user.id)
     return jsonify({"message": "Registration submitted. Please wait for an administrator to approve your account."}), 201

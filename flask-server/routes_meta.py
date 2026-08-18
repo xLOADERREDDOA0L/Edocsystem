@@ -1,8 +1,9 @@
-"""Departments and categories."""
+"""Departments, categories, and site configuration."""
 from flask import Blueprint, g, jsonify, request
 
+from email_notifications import get_email_settings
 from helpers import iso, log_audit, require_auth
-from models import Category, Department, db
+from models import Category, Department, EmailSetting, db
 
 bp = Blueprint("meta", __name__)
 
@@ -62,6 +63,57 @@ def update_department(item_id):
 @require_auth()
 def list_categories():
     return _list(Category)
+
+
+@bp.get("/settings/email")
+@require_auth(("administrator",))
+def get_email_config():
+    settings = get_email_settings()
+    return jsonify({
+        "host": settings["host"],
+        "port": settings["port"],
+        "username": settings["username"],
+        "password": settings["password"],
+        "useTls": settings["use_tls"],
+        "useSsl": settings["use_ssl"],
+        "fromEmail": settings["from_email"],
+    })
+
+
+@bp.put("/settings/email")
+@require_auth(("administrator",))
+def update_email_config():
+    body = request.get_json(silent=True) or {}
+    for key, value in (
+        ("SMTP_HOST", body.get("host")),
+        ("SMTP_PORT", body.get("port")),
+        ("SMTP_USERNAME", body.get("username")),
+        ("SMTP_PASSWORD", body.get("password")),
+        ("SMTP_USE_TLS", body.get("useTls")),
+        ("SMTP_USE_SSL", body.get("useSsl")),
+        ("EMAIL_FROM", body.get("fromEmail")),
+    ):
+        if value is None:
+            continue
+        row = db.session.query(EmailSetting).filter_by(key=key).first()
+        if row is None:
+            row = EmailSetting(key=key, value=str(value))
+            db.session.add(row)
+        else:
+            row.value = str(value)
+    db.session.commit()
+    log_audit(g.user.id, "UPDATE_EMAIL_SETTINGS", "settings",
+              "Updated SMTP email settings")
+    settings = get_email_settings()
+    return jsonify({
+        "host": settings["host"],
+        "port": settings["port"],
+        "username": settings["username"],
+        "password": settings["password"],
+        "useTls": settings["use_tls"],
+        "useSsl": settings["use_ssl"],
+        "fromEmail": settings["from_email"],
+    })
 
 
 @bp.post("/categories")

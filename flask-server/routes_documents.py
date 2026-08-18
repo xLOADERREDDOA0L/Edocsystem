@@ -3,8 +3,13 @@ import uuid
 
 from flask import Blueprint, g, jsonify, request
 
+from email_notifications import (
+    send_revision_approved_email,
+    send_revision_pending_email,
+    send_revision_rejected_email,
+)
 from helpers import format_document, format_revision, log_audit, require_auth
-from models import Document, PrintTransaction, Revision, db, utcnow
+from models import Document, PrintTransaction, Revision, User, db, utcnow
 
 bp = Blueprint("documents", __name__)
 
@@ -134,6 +139,10 @@ def submit_revision(doc_id, rev_id):
     rev.status = "under_review"
     doc.status = "under_review"
     db.session.commit()
+
+    approvers = User.query.filter_by(role="supervisor", status="active").all()
+    send_revision_pending_email(g.user, approvers, doc.document_number, rev.revision_number)
+
     log_audit(g.user.id, "SUBMIT_REVISION", "revisions",
               f"Submitted revision {rev.revision_number} of {doc.document_number}",
               "revision", rev.id)
@@ -158,6 +167,11 @@ def approve_revision(doc_id, rev_id):
         rev.approval_comments = body.get("comments")
         doc.status = "manager_review"
         db.session.commit()
+
+        managers = User.query.filter_by(role="manager", status="active").all()
+        if managers:
+            send_revision_pending_email(rev.uploader, managers, doc.document_number, rev.revision_number)
+
         log_audit(g.user.id, "SUPERVISOR_APPROVE_REVISION", "revisions",
                   f"Supervisor-approved revision {rev.revision_number} of {doc.document_number}; awaiting manager final approval",
                   "revision", rev.id)
@@ -180,6 +194,10 @@ def approve_revision(doc_id, rev_id):
         doc.current_revision_id = rev.id
         doc.status = "approved"
         db.session.commit()
+
+        approver_name = g.user.full_name or g.user.employee_id or "Manager"
+        send_revision_approved_email(rev.uploader, doc.document_number, rev.revision_number, approver_name)
+
         log_audit(g.user.id, "APPROVE_REVISION", "revisions",
                   f"Final-approved revision {rev.revision_number} of {doc.document_number}",
                   "revision", rev.id)
@@ -214,6 +232,10 @@ def reject_revision(doc_id, rev_id):
     current = Revision.query.get(doc.current_revision_id) if doc.current_revision_id else None
     doc.status = "approved" if (current and current.status == "approved") else "rejected"
     db.session.commit()
+
+    approver_name = g.user.full_name or g.user.employee_id or "Supervisor"
+    send_revision_rejected_email(rev.uploader, doc.document_number, rev.revision_number, approver_name, body["reason"])
+
     log_audit(g.user.id, "REJECT_REVISION", "revisions",
               f"Rejected revision {rev.revision_number} of {doc.document_number}",
               "revision", rev.id)

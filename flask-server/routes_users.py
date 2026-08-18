@@ -1,6 +1,7 @@
 import bcrypt
 from flask import Blueprint, g, jsonify, request
 
+from email_notifications import send_account_status_email
 from helpers import log_audit, require_auth, user_profile
 from models import User, db
 
@@ -45,6 +46,7 @@ def create_user():
     )
     db.session.add(user)
     db.session.commit()
+    send_account_status_email(user, "created", "An administrator created your eDocs account. Please sign in using the credentials you were provided.")
     log_audit(g.user.id, "CREATE_USER", "users",
               f"Created user {user.employee_id}", "user", user.id)
     return jsonify(user_profile(user)), 201
@@ -82,6 +84,10 @@ def _set_status(user_id, status, action):
         return jsonify({"error": "User not found"}), 404
     user.status = status
     db.session.commit()
+    if status == "active":
+        send_account_status_email(user, "approved", "Your account has been approved and you can log in to the eDocs system.")
+    elif status == "disabled":
+        send_account_status_email(user, "disabled", "Your account has been disabled. Please contact the administrator for more information.")
     log_audit(g.user.id, action, "users",
               f"{action.replace('_', ' ').title()} {user.employee_id}", "user", user.id)
     return jsonify(user_profile(user))

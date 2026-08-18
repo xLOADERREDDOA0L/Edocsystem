@@ -30,6 +30,24 @@ Open the printed address (normally http://localhost:8080) and log in with
 | `SESSION_SECRET` | `changeme` | JWT signing secret — set your own string |
 | `DATABASE_FILE` | `flask-server/edocs.db` | SQLite database location |
 | `LOCAL_STORAGE_DIR` | `flask-server/.data/uploads` | Uploaded PDF storage |
+| `SMTP_HOST` | *(unset)* | SMTP server host for outbound notifications |
+| `SMTP_PORT` | `587` | SMTP port |
+| `SMTP_USERNAME` | *(unset)* | SMTP username |
+| `SMTP_PASSWORD` | *(unset)* | SMTP password |
+| `SMTP_USE_TLS` | `false` | Use STARTTLS before sending mail |
+| `SMTP_USE_SSL` | `false` | Use SMTPS instead of plain SMTP |
+| `EMAIL_FROM` | `noreply@edocs.local` | Email sender address shown on notifications |
+
+Example SMTP config:
+
+```bash
+export SMTP_HOST=smtp.gmail.com
+export SMTP_PORT=587
+export SMTP_USERNAME=you@gmail.com
+export SMTP_PASSWORD=your-app-password
+export SMTP_USE_TLS=true
+export EMAIL_FROM=noreply@yourdomain.com
+```
 
 ## Default accounts
 | Username | Password | Role |

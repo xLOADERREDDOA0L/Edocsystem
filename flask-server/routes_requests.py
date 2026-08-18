@@ -3,8 +3,9 @@ import time
 
 from flask import Blueprint, g, jsonify, request
 
+from email_notifications import send_request_approved_email, send_request_pending_email, send_request_rejected_email
 from helpers import iso, log_audit, require_auth
-from models import DocumentRequest, db, utcnow
+from models import DocumentRequest, User, db, utcnow
 
 bp = Blueprint("requests", __name__)
 
@@ -57,6 +58,12 @@ def create_request():
     )
     db.session.add(req)
     db.session.commit()
+
+    requester = db.session.get(User, g.user.id)
+    supervisors = User.query.filter_by(role="supervisor", status="active").all()
+    doc_title = req.document.title if req.document else None
+    send_request_pending_email(requester, supervisors, req.request_number, doc_title)
+
     log_audit(g.user.id, "CREATE_REQUEST", "requests",
               f"Created request {req.request_number}", "request", req.id)
     return jsonify(_fmt(req)), 201
@@ -71,6 +78,11 @@ def approve_request(req_id):
     req.status = "approved"
     req.approved_at = utcnow()
     db.session.commit()
+
+    requester = req.requester
+    approver_name = g.user.full_name or g.user.employee_id or "Supervisor"
+    send_request_approved_email(requester, req.request_number, approver_name)
+
     log_audit(g.user.id, "APPROVE_REQUEST", "requests",
               f"Approved request {req.request_number}", "request", req.id)
     return jsonify(_fmt(req))
@@ -86,6 +98,11 @@ def reject_request(req_id):
     req.status = "rejected"
     req.rejection_reason = body.get("reason")
     db.session.commit()
+
+    requester = req.requester
+    approver_name = g.user.full_name or g.user.employee_id or "Supervisor"
+    send_request_rejected_email(requester, req.request_number, approver_name, body.get("reason"))
+
     log_audit(g.user.id, "REJECT_REQUEST", "requests",
               f"Rejected request {req.request_number}", "request", req.id)
     return jsonify(_fmt(req))
